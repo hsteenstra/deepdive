@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Deep Dive</title>
+  <meta name="theme-color" content="#06161c">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <!-- PyScript -->
+  <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css">
+  <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ============ LOADING SCREEN ============ -->
+  <div class="loader" id="loader" role="status" aria-live="polite">
+    <div class="loader-inner">
+      <div class="loader-scope" aria-hidden="true"><i></i></div>
+      <p class="loader-title">Deep Dive</p>
+      <p class="loader-note">Starting the engines… (loading Python)</p>
+    </div>
+  </div>
+
+  <div class="game">
+
+    <!-- ============ TOP BAR ============ -->
+    <header class="topbar panel">
+      <div class="brand">
+        <svg class="brand-mark" viewBox="0 0 48 32" aria-hidden="true"><path d="M8 18c0-6 6-9 16-9h6c8 0 13 3 13 9s-5 9-13 9H18C11 27 8 24 8 18z" fill="currentColor"/><rect x="21" y="3" width="7" height="8" rx="2" fill="currentColor"/><path d="M2 13l6 5-6 5z" fill="currentColor"/></svg>
+        <span>Deep&nbsp;Dive</span>
+      </div>
+      <p class="captain">Captain <strong id="captain-name">—</strong></p>
+      <button type="button" class="btn-new" py-click="new_game">New dive</button>
+    </header>
+
+    <!-- ============ VIEWPORT: the ocean ============ -->
+    <main class="viewport panel" aria-label="Ocean map">
+      <div class="viewport-frame">
+        <div class="depth-scale" aria-hidden="true">
+          <span>0m</span><span>50m</span><span>100m</span><span>150m</span><span>200m</span><span>250m</span>
+        </div>
+
+        <div class="sea" id="sea">
+          <div class="sky" aria-hidden="true"><div class="waves"></div></div>
+          <div class="rays" aria-hidden="true"><i></i><i></i><i></i></div>
+          <div class="particles" aria-hidden="true">
+            <i style="--x:8%;--d:0s;--t:11s"></i><i style="--x:22%;--d:3s;--t:14s"></i>
+            <i style="--x:37%;--d:6s;--t:12s"></i><i style="--x:51%;--d:1s;--t:16s"></i>
+            <i style="--x:66%;--d:4s;--t:13s"></i><i style="--x:80%;--d:7s;--t:15s"></i>
+            <i style="--x:93%;--d:2s;--t:12s"></i>
+          </div>
+          <div class="seabed" aria-hidden="true"></div>
+
+          <!-- Python fills this with the grid squares -->
+          <div class="ocean" id="ocean"></div>
+
+          <!-- The submarine (Python moves it with --x and --y) -->
+          <div class="sub" id="sub" data-facing="right" style="--x: 0; --y: 0" aria-label="Your submarine">
+            <span class="sub-ping" aria-hidden="true"></span>
+            <svg class="sub-body" viewBox="0 0 120 70" aria-hidden="true">
+              <defs>
+                <linearGradient id="hullGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stop-color="#ffd36b"/>
+                  <stop offset="0.55" stop-color="#f2a93b"/>
+                  <stop offset="1" stop-color="#b86a1b"/>
+                </linearGradient>
+              </defs>
+              <g class="sub-prop"><rect x="2" y="34" width="6" height="16" rx="2" fill="#5b6b70"/><path d="M5 30 l-3 -8 h6z M5 54 l-3 8 h6z" fill="#8a9aa0"/></g>
+              <path d="M10 42 L20 34 L20 50 Z" fill="#c9832a"/>
+              <rect x="52" y="10" width="20" height="18" rx="5" fill="url(#hullGrad)"/>
+              <rect x="64" y="2" width="4" height="12" rx="2" fill="#9c5c1a"/>
+              <rect x="64" y="2" width="12" height="4" rx="2" fill="#9c5c1a"/>
+              <path d="M18 42c0-12 14-17 38-17h20c22 0 34 7 34 17s-12 17-34 17H56c-24 0-38-5-38-17z" fill="url(#hullGrad)"/>
+              <path d="M22 46c10 7 30 9 54 9 18 0 28-3 33-8" fill="none" stroke="#9c5c1a" stroke-width="3" stroke-linecap="round" opacity="0.6"/>
+              <circle cx="50" cy="40" r="6.5" fill="#173a44" stroke="#9c5c1a" stroke-width="3"/>
+              <circle cx="70" cy="40" r="6.5" fill="#173a44" stroke="#9c5c1a" stroke-width="3"/>
+              <circle cx="90" cy="40" r="6.5" fill="#173a44" stroke="#9c5c1a" stroke-width="3"/>
+              <circle class="porthole-glow" cx="50" cy="40" r="3.5" fill="#7ff5dc"/>
+              <circle class="porthole-glow" cx="70" cy="40" r="3.5" fill="#7ff5dc"/>
+              <circle class="porthole-glow" cx="90" cy="40" r="3.5" fill="#7ff5dc"/>
+              <path d="M108 38 l10 -4 v16 l-10 -4z" fill="#ffe7a3" opacity="0.9"/>
+            </svg>
+            <span class="sub-light" aria-hidden="true"></span>
+          </div>
+
+          <!-- Game over screen (Python shows it) -->
+          <div class="overlay" id="overlay" hidden>
+            <div class="overlay-card">
+              <p class="overlay-kicker">Dive report</p>
+              <h2 id="overlay-title">Mission complete</h2>
+              <p id="overlay-text"></p>
+              <button type="button" class="btn-new btn-new--big" py-click="new_game">Dive again</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="ticker" aria-live="polite">
+        <span class="ticker-dot" aria-hidden="true"></span>
+        <p id="status-text">Waiting for orders, Captain.</p>
+      </div>
+    </main>
+
+    <!-- ============ CONTROL DECK ============ -->
+    <aside class="deck" aria-label="Control deck">
+
+      <!-- Instruments -->
+      <section class="instruments panel">
+        <div class="gauge gauge--oxygen" id="oxygen-gauge" data-level="ok">
+          <div class="gauge-label">Oxygen</div>
+          <div class="tank"><div class="tank-fill" id="oxygen-bar"></div><div class="tank-ticks"></div></div>
+          <div class="gauge-value"><span id="oxygen">100</span><small>%</small></div>
+        </div>
+
+        <div class="readouts">
+          <div class="readout">
+            <span class="readout-label">Depth</span>
+            <span class="readout-value"><span id="depth">0</span><small>m</small></span>
+          </div>
+          <div class="readout">
+            <span class="readout-label">Treasure</span>
+            <span class="readout-value readout-value--gold"><span id="treasure-count">0</span><small>/<span id="treasure-total">0</span></small></span>
+          </div>
+          <div class="readout">
+            <span class="readout-label">Hull</span>
+            <div class="hull" id="hull" data-hull="3" aria-label="Hull strength">
+              <i></i><i></i><i></i>
+            </div>
+          </div>
+          <div class="readout">
+            <span class="readout-label">Moves</span>
+            <span class="readout-value"><span id="moves">0</span></span>
+          </div>
+        </div>
+
+        <div class="sonar" id="sonar-panel" data-level="0">
+          <div class="scope" aria-hidden="true"><i class="sweep"></i><i class="blip"></i></div>
+          <div>
+            <span class="readout-label">Sonar</span>
+            <p class="sonar-text"><strong id="sonar">0</strong> <span>mines nearby</span></p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Controls -->
+      <section class="controls panel">
+        <div class="dpad" role="group" aria-label="Steer">
+          <button type="button" class="key key--up" py-click="go_up" data-key="ArrowUp" aria-label="Up">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5l7 9H5z" fill="currentColor"/></svg>
+          </button>
+          <button type="button" class="key key--left" py-click="go_left" data-key="ArrowLeft" aria-label="Left">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l9-7v14z" fill="currentColor"/></svg>
+          </button>
+          <button type="button" class="key key--surface" py-click="go_surface" aria-label="Surface">
+            <span>Surface</span>
+          </button>
+          <button type="button" class="key key--right" py-click="go_right" data-key="ArrowRight" aria-label="Right">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12l-9 7V5z" fill="currentColor"/></svg>
+          </button>
+          <button type="button" class="key key--down" py-click="go_down" data-key="ArrowDown" aria-label="Down">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19l-7-9h14z" fill="currentColor"/></svg>
+          </button>
+        </div>
+
+        <form class="console" id="console" onsubmit="return false">
+          <label for="command" class="console-label">Command line</label>
+          <div class="console-row">
+            <span class="console-prompt" aria-hidden="true">&gt;</span>
+            <input id="command" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="type a command…">
+            <button type="button" class="console-send" id="send" py-click="send_command">Send</button>
+          </div>
+          <div class="console-chips" aria-label="Example commands">
+            <button type="button" data-cmd="up">up</button>
+            <button type="button" data-cmd="down">down</button>
+            <button type="button" data-cmd="left">left</button>
+            <button type="button" data-cmd="right">right</button>
+            <button type="button" data-cmd="surface">surface</button>
+          </div>
+        </form>
+      </section>
+
+      <!-- Captain's log -->
+      <section class="log panel">
+        <h2 class="panel-title">Captain's log</h2>
+        <div id="log" class="log-list" aria-live="polite"></div>
+      </section>
+    </aside>
+  </div>
+
+  <py-script src="main.py"></py-script>
+
+  <!-- Presentation only: keyboard shortcuts, sonar ping, loading screen.
+       All game rules live in main.py. -->
+  <script>
+    (function () {
+      var loader = document.getElementById('loader');
+      var sub = document.getElementById('sub');
+      var input = document.getElementById('command');
+      var send = document.getElementById('send');
+
+      // Arrow keys steer (not while typing in the command line)
+      document.addEventListener('keydown', function (e) {
+        if (e.target === input || e.metaKey || e.ctrlKey || e.altKey) return;
+        var key = document.querySelector('.key[data-key="' + e.key + '"]');
+        if (!key) return;
+        e.preventDefault();
+        key.classList.add('is-pressed');
+        key.click();
+        setTimeout(function () { key.classList.remove('is-pressed'); }, 140);
+      });
+
+      // Enter in the command line = Send
+      input.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); send.click(); }
+      });
+
+      // Command chips type the word into the command line
+      document.querySelectorAll('[data-cmd]').forEach(function (chip) {
+        chip.addEventListener('click', function () {
+          input.value = chip.dataset.cmd;
+          input.focus();
+        });
+      });
+
+      // Sonar ping every time the sub moves
+      new MutationObserver(function () {
+        sub.classList.remove('is-pinging');
+        void sub.offsetWidth;
+        sub.classList.add('is-pinging');
+      }).observe(sub, { attributes: true, attributeFilter: ['style'] });
+
+      // Shake the screen when the hull takes damage
+      var hull = document.getElementById('hull');
+      var lastHull = hull.dataset.hull;
+      new MutationObserver(function () {
+        if (Number(hull.dataset.hull) < Number(lastHull)) {
+          document.body.classList.remove('is-hit');
+          void document.body.offsetWidth;
+          document.body.classList.add('is-hit');
+        }
+        lastHull = hull.dataset.hull;
+      }).observe(hull, { attributes: true, attributeFilter: ['data-hull'] });
+
+      // Hide the loading screen once Python draws the ocean
+      var ocean = document.getElementById('ocean');
+      var ready = new MutationObserver(function () {
+        loader.classList.add('is-done');
+        ready.disconnect();
+      });
+      ready.observe(ocean, { childList: true });
+      setTimeout(function () {
+        if (!loader.classList.contains('is-done')) {
+          loader.querySelector('.loader-note').textContent = 'Still loading… if this takes too long, check the browser console for a Python error.';
+        }
+      }, 20000);
+    })();
+  </script>
+</body>
+</html>
